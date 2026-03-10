@@ -79,13 +79,13 @@ public sealed class SupermatterComponent : Component
     [DataField]
     public float GasEfficiency { get; set; } = 0.15f;
 
-    /// <summary>Ratio of matter power to power conversion rate</summary>
+    /// <summary>Ratio of matter power to power conversion rate. Divides matter power before converting to power.</summary>
     [DataField]
-    public float MatterPowerConversion { get; } = 1f;
+    public float MatterPowerConversion { get; } = 10f;
 
-    /// <summary>How much matter power is consumed and converted to power per cycle.</summary>
+    /// <summary>Minimum matter power consumed and converted to power per cycle (floor guarantee).</summary>
     [DataField]
-    public float MatterPowerConsumedPerCycle { get; } = 1f;
+    public float MatterPowerConsumedPerCycle { get; } = 40f;
 
     #endregion Generic Knobs
 
@@ -168,7 +168,7 @@ public sealed class SupermatterComponent : Component
 
     /// <summary>Multiply outgoing rads by this.</summary>
     [DataField]
-    public float RadiationOutputFactor { get; set; } = 1f;
+    public float RadiationOutputFactor { get; set; } = 0.03f;
 
     #endregion Output Knobs
 

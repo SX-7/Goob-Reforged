@@ -36,8 +36,18 @@ public sealed partial class SupermatterSystem
         ConsumeMatterPower(sm);
         ConsumeAmmonia(sm, absorbed);
 
-        // Increase power from temperature (Since it can be <0, do the simple check)
-        sm.Power = Math.Max(absorbed.Gas.Temperature * heatModifier / Atmospherics.T0C + sm.Power, 0);
+        // Increase power from temperature.
+        // The neutral heatModifier baseline is 1f (empty mix returns all-ones from GetGasModifiers).
+        // Subtracting 1 recovers the raw gas-composition contribution (equivalent to the original powerRatio).
+        const float heatModifierNeutralBaseline = 1f;
+        var powerRatio = Math.Clamp(heatModifier - heatModifierNeutralBaseline, 0f, 1f);
+        // tempFactorHigh applies when positive gases heavily dominate (>80% of mix by PowerMixRatio sum).
+        // Values match the original Init commit's tempFactor constants (30 base, 50 high).
+        const float tempFactorBase = 30f;
+        const float tempFactorHigh = 50f;
+        const float tempFactorHighThreshold = 0.8f;
+        var tempFactor = powerRatio > tempFactorHighThreshold ? tempFactorHigh : tempFactorBase;
+        sm.Power = Math.Max(absorbed.Gas.Temperature * tempFactor / Atmospherics.T0C * powerRatio + sm.Power, 0);
 
         #endregion Add power to crystal
 
@@ -56,8 +66,8 @@ public sealed partial class SupermatterSystem
         absorbed.Gas.AdjustMoles(Gas.Oxygen, Math.Max(moleModifier * (energy + absorbed.Gas.Temperature - Atmospherics.T0C) * sm.OxygenReleaseEfficiencyModifier, 0f));
         absorbed.Gas.AdjustMoles(Gas.Plasma, Math.Max(moleModifier * sm.PlasmaReleaseModifier * energy, 0f));
 
-        // Increase temperature
-        absorbed.Gas.Temperature += energy * sm.ThermalReleaseModifier;
+        // Increase temperature. Scaled by moleModifier to match original heatModifier gas scaling.
+        absorbed.Gas.Temperature += energy * moleModifier * sm.ThermalReleaseModifier;
 
         #endregion Generate outputs
 
@@ -65,11 +75,13 @@ public sealed partial class SupermatterSystem
 
         // I'd recommend plotting these two if you want to get it but in general this lets it need less input to stay under power threshold/scaler than above
         // Hardcoded to discourage YAML majors
-        const float powerReductionScaler = 5f;
+        const float powerReductionScaler = 500f;
         var powerReduction = float.Pow(sm.Power / powerReductionScaler, 3f);
 
-        // Atp power is lowered
-        sm.Power = Math.Max(sm.Power - Math.Min(powerReduction, sm.Power * (1 - 1 / powerReductionScaler)) * co2Modifier, 0f);
+        // Atp power is lowered.
+        // Cap at 83% power loss per cycle to prevent instant drain on large power spikes (matches original Init value).
+        const float maxPowerLossFraction = 0.83f;
+        sm.Power = Math.Max(sm.Power - Math.Min(powerReduction, sm.Power * maxPowerLossFraction) * co2Modifier, 0f);
 
         #endregion Scale down power
     }
@@ -80,11 +92,11 @@ public sealed partial class SupermatterSystem
         {
             return;
         }
-        // Get how much matter power to transfer
-        var removedMatter = Math.Clamp(sm.MatterPower, 0f, sm.MatterPowerConsumedPerCycle * sm.MatterPowerConversion);
-        // And transfer it around
+        // Transfer at least MatterPowerConsumedPerCycle, or MatterPower/MatterPowerConversion if that's more.
+        // Mirrors the original: Math.Max(MatterPower / conversion, minimum)
+        var removedMatter = Math.Max(sm.MatterPower / sm.MatterPowerConversion, sm.MatterPowerConsumedPerCycle);
         sm.Power += removedMatter;
-        sm.MatterPower -= removedMatter;
+        sm.MatterPower = Math.Max(sm.MatterPower - removedMatter, 0f);
     }
 
     private static void ConsumeAmmonia(SupermatterComponent sm, in GasWrapper gas)
