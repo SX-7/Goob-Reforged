@@ -47,11 +47,11 @@ public sealed class SupermatterComponent : Component
     public float DamageIncreaseMultiplier { get; } = 0.25f;
 
     /// <summary>
-    /// Multiplier on damage the core takes from absorbing hot gas
-    /// Default is ~1/350
+    /// Divisor for temperature-based damage. Encapsulates the inverse mole-heat threshold and damage scaling factor.
+    /// Default is ~150/350 ≈ 0.4286. Higher values mean less heat damage per degree above threshold.
     /// </summary>
     [ViewVariables(VVAccess.ReadOnly)]
-    public float MoleHeatPenalty { get; } = 0.00286f;
+    public float MoleHeatPenalty { get; } = 0.4286f;
 
     /// <summary>
     /// The point at which we should start sending messeges
@@ -79,11 +79,11 @@ public sealed class SupermatterComponent : Component
     [DataField]
     public float GasEfficiency { get; set; } = 0.15f;
 
-    /// <summary>Ratio of matter power to power conversion rate. Divides matter power before converting to power.</summary>
+    /// <summary>Multiplier applied to matter power when converting it to crystal power (power = matter * MatterPowerConversion).</summary>
     [DataField]
-    public float MatterPowerConversion { get; } = 10f;
+    public float MatterPowerConversion { get; } = 1f;
 
-    /// <summary>Minimum matter power consumed and converted to power per cycle (floor guarantee).</summary>
+    /// <summary>Maximum matter power consumed and converted per cycle.</summary>
     [DataField]
     public float MatterPowerConsumedPerCycle { get; } = 40f;
 
@@ -169,6 +169,22 @@ public sealed class SupermatterComponent : Component
     /// <summary>Multiply outgoing rads by this.</summary>
     [DataField]
     public float RadiationOutputFactor { get; set; } = 0.03f;
+
+    /// <summary>Temperature-to-power factor when active gas composition is below TempFactorHighThreshold.</summary>
+    [DataField]
+    public float TempFactorBase { get; } = 30f;
+
+    /// <summary>Temperature-to-power factor when active gas composition is at or above TempFactorHighThreshold.</summary>
+    [DataField]
+    public float TempFactorHigh { get; } = 50f;
+
+    /// <summary>powerRatio threshold above which TempFactorHigh is used instead of TempFactorBase.</summary>
+    [DataField]
+    public float TempFactorHighThreshold { get; } = 0.8f;
+
+    /// <summary>Maximum fraction of current power that can be drained per cycle.</summary>
+    [DataField]
+    public float MaxPowerLossFraction { get; } = 0.83f;
 
     #endregion Output Knobs
 

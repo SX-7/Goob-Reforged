@@ -32,9 +32,8 @@ public sealed partial class SupermatterSystem
 
         var tempThreshold = (Atmospherics.T0C + sm.HeatPenaltyThreshold) * heatResistModifier;
 
-        // Temperature damage. Divide by (MoleHeatPenalty * 150) to recover the original threshold scale
-        // (MoleHeatPenalty = ~1/350, so this is equivalent to original's MoleHeatThreshold(350) / 150).
-        totalDamage += Math.Max(Math.Clamp(moles / 200f, .5f, 1f) * surrounding.Gas.Temperature - tempThreshold, 0f) / (sm.MoleHeatPenalty * 150f);
+        // Temperature damage, clamped by mole count.
+        totalDamage += Math.Max(Math.Clamp(moles / 200f, .5f, 1f) * surrounding.Gas.Temperature - tempThreshold, 0f) / sm.MoleHeatPenalty;
 
         totalDamage += Math.Max(sm.Power - sm.PowerPenaltyThreshold, 0f) / 500f;
 
